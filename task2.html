@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masonry Gallery</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css"/>
+    
+    <style>
+        .grid {
+            margin: 10px auto;
+            max-width: 1200px;
+        }
+
+        .grid-sizer,
+        .grid-item {
+            width: calc(33.333% - 10px);
+            margin: 5px;
+            transition: transform 0.3s ease;
+        }
+
+        .grid-item img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            cursor: zoom-in;
+            vertical-align: middle;
+            object-fit: cover;
+        }
+        
+        .fancybox__slide img, 
+        .fancybox__content img, 
+        .fancybox__image, 
+        .fancybox__backdrop, 
+        .fancybox__content, 
+        a[data-fancybox] img {
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        
+        .fancybox__content:focus,
+        .fancybox__slide:focus,
+        .fancybox__image:focus,
+        a[data-fancybox]:focus img {
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        
+        a:focus, a:active {
+            outline: none !important;
+            border: none !important;
+        }
+       
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        @media (max-width: 1024px) {
+            .grid-sizer,
+            .grid-item {
+                width: calc(50% - 10px);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .grid-sizer,
+            .grid-item {
+                width: calc(100% - 10px);
+            }
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="grid">
+        <div class="grid-sizer"></div>
+    </div>
+    <div class="loading">Loading more images...</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/masonry-layout@4.2.2/dist/masonry.pkgd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/imagesloaded@5/imagesloaded.pkgd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const grid = document.querySelector('.grid');
+            const loadingIndicator = document.querySelector('.loading');
+            let isLoading = false;
+            let page = 0;
+            let imageCounter = 0;
+            let loadingTimeout;
+            
+            const msnry = new Masonry(grid, {
+                itemSelector: '.grid-item',
+                columnWidth: '.grid-sizer',
+                percentPosition: true,
+                transitionDuration: 0
+            });
+            
+            Fancybox.defaults = {
+                Thumbs: false,
+                Toolbar: {
+                    display: {
+                        left: [],
+                        middle: [],
+                        right: ['close'],
+                    },
+                },
+                Image: {
+                    zoom: false,
+                    click: 'close',
+                    wheel: 'slide',
+                },
+                Carousel: {
+                    preload: 1,
+                    navigation: true,
+                }
+            };
+           
+            document.addEventListener('click', (e) => {
+                if (e.target.matches('.fancybox__slide img, a[data-fancybox] img')) {
+                    e.target.style.outline = 'none';
+                    e.target.style.border = 'none';
+                    e.target.style.boxShadow = 'none';
+                }
+            });
+            
+            loadImages(6);
+           
+            let scrollTimeout;
+            window.addEventListener('scroll', () => {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    if (isLoading) return;
+                    
+                    const scrollBottom = window.innerHeight + window.scrollY;
+                    const documentHeight = document.documentElement.offsetHeight;
+                    
+                    if (scrollBottom >= documentHeight - 1000) {
+                        loadImages(6 + (page % 2));
+                        page++;
+                    }
+                }, 100);
+            });
+        
+            window.addEventListener('resize', () => msnry.layout());
+
+            async function loadImages(count) {
+                isLoading = true;              
+                
+                loadingTimeout = setTimeout(() => {
+                    loadingIndicator.style.display = 'block';
+                }, 500);
+
+                const fragment = document.createDocumentFragment();
+                const newItems = [];
+                
+                for (let i = 0; i < count; i++) {
+                    imageCounter++;
+                    const imageId = imageCounter;
+                    const aspectRatio = 0.7 + Math.random() * 0.6;
+                    const imgWidth = 300 + Math.floor(Math.random() * 300);
+                    const imgHeight = imgWidth * aspectRatio;
+
+                    const div = document.createElement('div');
+                    div.className = 'grid-item';
+                    
+                    const link = document.createElement('a');
+                    link.href = `https://picsum.photos/id/${imageId}/${Math.floor(imgWidth * 2)}/${Math.floor(imgHeight * 2)}`;
+                    link.dataset.fancybox = 'gallery';
+                    link.dataset.caption = `Image ${imageCounter}`;
+                    
+                    const img = document.createElement('img');
+                    img.src = `https://picsum.photos/id/${imageId}/${Math.floor(imgWidth)}/${Math.floor(imgHeight)}`;
+                    img.alt = `Gallery image ${imageCounter}`;
+                    img.loading = 'lazy'; // Lazy loading attribute
+                    
+                    link.appendChild(img);
+                    div.appendChild(link);
+                    fragment.appendChild(div);
+                    newItems.push(div);
+                }
+
+                grid.appendChild(fragment);
+
+                await new Promise((resolve) => {
+                    imagesLoaded(newItems).on('done', () => {
+                        clearTimeout(loadingTimeout);
+                        loadingIndicator.style.display = 'none';
+                        msnry.appended(newItems);
+                        msnry.layout();
+                        isLoading = false;
+                        resolve();
+                    });
+                });
+
+                // Rebind Fancybox
+                Fancybox.unbind('[data-fancybox]');
+                Fancybox.bind('[data-fancybox]');
+            }
+        });
+    </script>
+</body>
+</html>
