@@ -1,7 +1,7 @@
-  -Masonry Image Gallery
+
     A responsive Masonry-style gallery with dynamic image loading and a lightbox modal.
 
-  -Features
+
    Adapts to desktop, tablet, and mobile.
     Auto-arranges images in a grid.
     Loads more images on scroll.
